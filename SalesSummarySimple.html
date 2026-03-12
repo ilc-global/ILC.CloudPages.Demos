@@ -47,15 +47,15 @@
             environment: 'demo',
             demoData: {
                 queries: {
-                    // Matched via substring against the customer dropdown SQL
-                    "FROM customer WHERE activeFlag": [
+                    // Matched via script tag id="customerQuery"
+                    "customerQuery": [
                         { id: 1, name: "ABC Manufacturing" },
                         { id: 2, name: "XYZ Distribution" },
                         { id: 3, name: "Acme Industrial" },
                         { id: 4, name: "Pinnacle Supply Co." }
                     ],
-                    // Matched via substring against the main report SQL
-                    "so.num AS so_num": [
+                    // Matched via script tag id="query"
+                    "query": [
                         { so_num: "50001", customer_name: "ABC Manufacturing",  date_issued: "2025-01-08", total_price: 4250.00, product_num: "WIDGET-A",  qty_fulfilled: 10 },
                         { so_num: "50002", customer_name: "ABC Manufacturing",  date_issued: "2025-01-22", total_price: 875.50,  product_num: "WIDGET-B",  qty_fulfilled: 3  },
                         { so_num: "50003", customer_name: "ABC Manufacturing",  date_issued: "2025-02-14", total_price: 3100.00, product_num: "WIDGET-A",  qty_fulfilled: 7  },
@@ -78,6 +78,25 @@
 
     <script src="js/driver.js.iife.js"></script>
     <script src="js/cloudpages.js"></script>
+
+    <!-- Demo pre-fill — populates fields after cloudpages async init completes -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (FB.environment !== 'demo') return;
+            // setTimeout(0) runs after the Promise microtasks that load dropdown options
+            setTimeout(function () {
+                var customerSelect = document.getElementById('customer');
+                if (customerSelect) customerSelect.value = '1';
+
+                var dateStart = document.getElementById('date_issued_start');
+                var dateEnd   = document.getElementById('date_issued_end');
+                if (dateStart) dateStart.value = '2025-01-01';
+                if (dateEnd)   dateEnd.value   = '2025-12-31';
+
+                document.getElementById('submitButton').click();
+            }, 0);
+        });
+    </script>
 
     <!-- Demo tour — only runs when viewed on the web in demo mode -->
     <script>
@@ -159,6 +178,9 @@
         "qty_unit_format": "0.##"
     }
     </script>
+
+    <!-- Named SQL for customer dropdown — id used as demo data key -->
+    <script id="customerQuery" type="text/plain">SELECT id, name FROM customer WHERE activeFlag = 1</script>
 
     <script id="parameters" type="application/json">
     {
