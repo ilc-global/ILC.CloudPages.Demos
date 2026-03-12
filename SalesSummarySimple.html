@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <link rel="stylesheet" href="css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="css/cloudpages.css">
+    <link rel="stylesheet" href="css/driver.css">
 </head>
 <body>
 
@@ -75,7 +76,76 @@
         });
     </script>
 
+    <script src="js/driver.js.iife.js"></script>
     <script src="js/cloudpages.js"></script>
+
+    <!-- Demo tour — only runs when viewed on the web in demo mode -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (FB.environment !== 'demo') return;
+
+            var driverObj = window.driver.js.driver({
+                showProgress: true,
+                allowClose: true,
+                steps: [
+                    {
+                        popover: {
+                            title: 'Welcome to the Sales Summary Demo',
+                            description: 'This page shows how a CloudPages report works. Follow the steps to run your first report — it\'s pre-loaded with sample data so nothing is required.',
+                            side: 'over'
+                        }
+                    },
+                    {
+                        element: '#parametersContainer',
+                        popover: {
+                            title: 'Step 1 — Choose a Customer',
+                            description: 'Select a customer from the dropdown. In demo mode these options are pre-populated with sample data.',
+                            side: 'bottom',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#parametersContainer',
+                        popover: {
+                            title: 'Step 2 — Set a Date Range',
+                            description: 'Pick a start and end date for the report. Try 2025-01-01 through 2025-12-31 to see all sample orders.',
+                            side: 'bottom',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#submitButton',
+                        popover: {
+                            title: 'Step 3 — Run the Report',
+                            description: 'Click Run Report to execute the query. Results will load in the table below.',
+                            side: 'bottom',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#exportBtn',
+                        popover: {
+                            title: 'Export',
+                            description: 'After the results load, click Export to download as XLSX or CSV.',
+                            side: 'bottom',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#tableContainer',
+                        popover: {
+                            title: 'Results Table',
+                            description: 'Results appear here with sorting, search, and pagination built in. Give it a try!',
+                            side: 'top',
+                            align: 'start'
+                        }
+                    }
+                ]
+            });
+
+            driverObj.drive();
+        });
+    </script>
 
     <!-- CloudPages declarative config -->
 
