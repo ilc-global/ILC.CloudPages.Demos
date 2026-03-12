@@ -98,10 +98,10 @@
         });
     </script>
 
-    <!-- Demo tour — only runs when viewed on the web in demo mode -->
+    <!-- Demo tour — only runs when viewed standalone in demo mode, not inside the viewer iframe -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            if (FB.environment !== 'demo') return;
+            if (FB.environment !== 'demo' || window !== window.top) return;
 
             var driverObj = window.driver.js.driver({
                 showProgress: true,

@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fishbowl Client — CloudPages Demo</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 13px;
+            overflow: hidden;
+            height: 100vh;
+            background: #555;
+        }
+
+        /* ── Outer window shell ─────────────────────────── */
+        .fb-window {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* ── Title bar ──────────────────────────────────── */
+        .fb-titlebar {
+            background: #2b2d31;
+            color: #bbb;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 12px;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .fb-titlebar-title { flex: 1; }
+        .fb-titlebar-icons { display: flex; align-items: center; gap: 6px; font-size: 16px; color: #777; }
+        .fb-win-btn {
+            width: 18px; height: 18px;
+            border: none; cursor: pointer; border-radius: 2px;
+            font-size: 10px; color: #555;
+            background: #aaa;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .fb-win-btn:hover { background: #ccc; }
+        .fb-win-btn.close { background: #e05; color: #fff; }
+        .fb-win-btn.close:hover { background: #c00; }
+
+        /* ── Menu bar ───────────────────────────────────── */
+        .fb-menubar {
+            background: #2b2d31;
+            color: #bbb;
+            height: 22px;
+            display: flex;
+            align-items: stretch;
+            padding: 0 4px;
+            font-size: 12px;
+            position: relative;
+            user-select: none;
+            flex-shrink: 0;
+            border-top: 1px solid #222;
+        }
+        .fb-menu-item {
+            padding: 0 9px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            border-radius: 2px;
+            white-space: nowrap;
+        }
+        .fb-menu-item:hover, .fb-menu-item.open { background: #3a3d44; color: #fff; }
+        .fb-menu-item.highlight { color: #6ab0ff; }
+
+        .fb-dropdown {
+            position: absolute;
+            top: 100%;
+            background: #fff;
+            border: 1px solid #bbb;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+            min-width: 170px;
+            z-index: 9000;
+            display: none;
+            border-radius: 3px;
+            padding: 3px 0;
+        }
+        .fb-dropdown.show { display: block; }
+        .fb-dd-item {
+            padding: 5px 14px;
+            color: #222;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .fb-dd-item:hover { background: #e8f0fe; }
+        .fb-dd-item.active-nav { background: #1565c0; color: #fff; }
+        .fb-dd-sep { border-top: 1px solid #eee; margin: 3px 0; }
+
+        /* ── Toolbar ────────────────────────────────────── */
+        .fb-toolbar {
+            background: #f4f4f4;
+            border-bottom: 1px solid #d5d5d5;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            padding: 0 6px;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+        .tb-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            padding: 4px 9px;
+            border: none;
+            background: transparent;
+            cursor: default;
+            border-radius: 3px;
+            font-size: 10.5px;
+            color: #333;
+            min-width: 48px;
+        }
+        .tb-btn:hover { background: #ddd; }
+        .tb-icon { font-size: 17px; }
+        .tb-sep { width: 1px; height: 34px; background: #d0d0d0; margin: 0 4px; }
+
+        /* ── Body ───────────────────────────────────────── */
+        .fb-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative; /* popup anchors here */
+        }
+
+        /* ── Sidebar ────────────────────────────────────── */
+        .fb-sidebar {
+            width: 184px;
+            background: #1d1f24;
+            color: #aaa;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex-shrink: 0;
+            border-right: 1px solid #111;
+        }
+        .fb-sidebar::-webkit-scrollbar { width: 4px; }
+        .fb-sidebar::-webkit-scrollbar-thumb { background: #444; }
+
+        .sb-modules-bar {
+            background: #141619;
+            border-bottom: 1px solid #111;
+            padding: 5px 10px;
+            font-size: 11px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .sb-group {
+            border-bottom: 1px solid #111;
+        }
+        .sb-group-title {
+            padding: 7px 10px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #ccc;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+        }
+        .sb-group-title:hover { background: #26292f; }
+        .sb-group-title .sb-arrow { font-size: 9px; color: #666; margin-left: auto; }
+        .sb-group-items { display: none; }
+        .sb-group.expanded .sb-group-items { display: block; }
+        .sb-item {
+            padding: 5px 10px 5px 26px;
+            font-size: 12px;
+            color: #999;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sb-item:hover { background: #26292f; color: #ddd; }
+        .sb-item.active { background: #1565c0; color: #fff; }
+
+        /* ── Main ───────────────────────────────────────── */
+        .fb-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        /* ── Tab bar ────────────────────────────────────── */
+        .fb-tabbar {
+            background: #efefef;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            align-items: stretch;
+            padding: 0 8px;
+            height: 28px;
+            flex-shrink: 0;
+        }
+        .fb-tab {
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: #555;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+        }
+        .fb-tab:hover { color: #222; }
+        .fb-tab.active { color: #1565c0; border-bottom-color: #1565c0; font-weight: 500; }
+
+        /* ── Content area ───────────────────────────────── */
+        .fb-content {
+            flex: 1;
+            overflow: auto;
+            padding: 20px 24px;
+            background: #fff;
+        }
+        .fb-panel { display: none; }
+        .fb-panel.active { display: block; }
+
+        /* ── Dashboard ──────────────────────────────────── */
+        .dash-title {
+            font-size: 22px;
+            color: #1565c0;
+            margin-bottom: 16px;
+            font-weight: 400;
+        }
+        .dash-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 260px;
+            grid-template-rows: auto auto;
+            gap: 12px;
+        }
+        .dash-gadget {
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .dash-gadget-head {
+            background: #1565c0;
+            color: #fff;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dash-gadget-body { overflow: auto; flex: 1; }
+        .dash-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .dash-table th {
+            background: #f5f5f5;
+            border-bottom: 1px solid #ddd;
+            padding: 4px 8px;
+            text-align: left;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .dash-table td {
+            padding: 3px 8px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .dash-table tr:hover td { background: #f0f7ff; }
+        .dash-table a { color: #1565c0; text-decoration: none; }
+        .dash-table a:hover { text-decoration: underline; }
+        .dash-foot {
+            padding: 4px 8px;
+            font-size: 11px;
+            color: #777;
+            text-align: center;
+            border-top: 1px solid #eee;
+            background: #fafafa;
+        }
+        .quick-links { padding: 10px 12px; font-size: 12px; line-height: 1.9; }
+        .quick-links h4 { font-size: 12px; color: #333; margin-bottom: 2px; margin-top: 8px; }
+        .quick-links h4:first-child { margin-top: 0; }
+        .quick-links a { color: #1565c0; text-decoration: none; display: block; }
+        .quick-links a:hover { text-decoration: underline; }
+
+        /* ── Available Pages ────────────────────────────── */
+        .pages-title {
+            font-size: 20px;
+            font-weight: 400;
+            color: #222;
+            margin-bottom: 16px;
+        }
+        .pages-search {
+            display: block;
+            width: 300px;
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            outline: none;
+        }
+        .pages-search:focus { border-color: #1565c0; box-shadow: 0 0 0 2px #1565c033; }
+        .pages-group {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .pages-group-head {
+            background: #f5f5f5;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .pages-group-head:hover { background: #eee; }
+        .pages-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .pages-table th {
+            background: #fafafa;
+            border-bottom: 1px solid #eee;
+            padding: 6px 12px;
+            text-align: left;
+            color: #666;
+            font-weight: 600;
+        }
+        .pages-table td {
+            padding: 7px 12px;
+            border-bottom: 1px solid #f5f5f5;
+            vertical-align: middle;
+        }
+        .pages-table tr:last-child td { border-bottom: none; }
+        .pages-table tr:hover td { background: #f8f8f8; }
+        .open-btn {
+            padding: 3px 14px;
+            background: #fff;
+            border: 1px solid #bbb;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #333;
+        }
+        .open-btn:hover { background: #e8f0fe; border-color: #1565c0; color: #1565c0; }
+
+        /* ── CloudPages popup window ────────────────────── */
+        .cp-popup-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            z-index: 500;
+            pointer-events: none;
+        }
+        .cp-popup-overlay.show { display: block; pointer-events: auto; }
+
+        .cp-popup {
+            position: absolute;
+            top: 30px;
+            left: 130px;
+            right: 0;
+            bottom: 0;
+            background: #fff;
+            border: 1px solid #aaa;
+            box-shadow: 0 6px 28px rgba(0,0,0,0.28);
+            display: flex;
+            flex-direction: column;
+            border-radius: 2px;
+        }
+
+        /* popup title bar */
+        .cp-popup-titlebar {
+            background: #ececec;
+            border-bottom: 1px solid #d0d0d0;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            gap: 6px;
+            font-size: 12px;
+            color: #333;
+            cursor: move;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .cp-popup-title { flex: 1; font-weight: 500; }
+        .cp-win-btn {
+            width: 20px; height: 20px;
+            border: 1px solid #bbb;
+            background: #f0f0f0;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 10px;
+            color: #555;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .cp-win-btn:hover { background: #ddd; }
+        .cp-win-btn.close:hover { background: #c00; color: #fff; border-color: #c00; }
+
+        /* popup toolbar */
+        .cp-popup-toolbar {
+            background: #fafafa;
+            border-bottom: 1px solid #eee;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+        .cp-tb-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            padding: 3px 8px;
+            border: none;
+            background: transparent;
+            cursor: default;
+            border-radius: 3px;
+            font-size: 10px;
+            color: #444;
+            min-width: 44px;
+        }
+        .cp-tb-btn:hover { background: #e4e4e4; }
+        .cp-tb-icon { font-size: 15px; }
+
+        /* popup content */
+        .cp-popup-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+        .cp-popup-iframe { flex: 1; border: none; width: 100%; }
+
+        /* Shields the iframe so mouse events don't get swallowed during drag/resize */
+        .cp-popup-shield {
+            display: none;
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            cursor: inherit;
+        }
+        .cp-popup-shield.active { display: block; }
+
+        /* Resize handles */
+        .cp-resize-e  { position: absolute; right: -4px; top: 20px; bottom: 20px; width: 8px; cursor: e-resize; z-index: 600; }
+        .cp-resize-s  { position: absolute; bottom: -4px; left: 20px; right: 20px; height: 8px; cursor: s-resize; z-index: 600; }
+        .cp-resize-se { position: absolute; right: -4px; bottom: -4px; width: 14px; height: 14px; cursor: se-resize; z-index: 600; }
+
+        /* popup status bar */
+        .cp-popup-statusbar {
+            height: 20px;
+            background: #f4f4f4;
+            border-top: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            font-size: 11px;
+            color: #666;
+            flex-shrink: 0;
+        }
+
+        /* ── Hint banner ────────────────────────────────── */
+        .hint-bar {
+            background: #fff3cd;
+            border-bottom: 1px solid #ffc107;
+            padding: 6px 16px;
+            font-size: 12px;
+            color: #664d03;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .hint-bar.hidden { display: none; }
+        .hint-dismiss {
+            margin-left: auto;
+            cursor: pointer;
+            font-size: 14px;
+            color: #999;
+            background: none;
+            border: none;
+            padding: 0 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="fb-window">
+
+    <!-- Hint bar -->
+    <div class="hint-bar" id="hint-bar">
+        <span>👆</span>
+        <span id="hint-text">This is a simulated Fishbowl client. Click <strong>Reporting</strong> in the menu bar above to navigate to CloudPages.</span>
+        <button class="hint-dismiss" id="hint-dismiss" title="Dismiss">✕</button>
+    </div>
+
+    <!-- Title bar -->
+    <div class="fb-titlebar">
+        <span class="fb-titlebar-title">Fishbowl Client — Acme Manufacturing (admin)</span>
+        <div style="display:flex;align-items:center;gap:4px;margin-right:8px;font-size:12px;color:#666;">
+            🔔 &nbsp; 🔍 &nbsp; 💾 &nbsp; 🟢
+        </div>
+        <div style="display:flex;gap:3px;">
+            <button class="fb-win-btn">—</button>
+            <button class="fb-win-btn">⬜</button>
+            <button class="fb-win-btn close">✕</button>
+        </div>
+    </div>
+
+    <!-- Menu bar -->
+    <div class="fb-menubar" id="fb-menubar">
+        <div class="fb-menu-item">File</div>
+        <div class="fb-menu-item">General</div>
+        <div class="fb-menu-item" id="menu-reporting">Reporting</div>
+        <div class="fb-menu-item">Materials</div>
+        <div class="fb-menu-item">Sales</div>
+        <div class="fb-menu-item">Purchasing</div>
+        <div class="fb-menu-item">Manufacturing</div>
+        <div class="fb-menu-item">Accounting</div>
+        <div class="fb-menu-item">Setup</div>
+        <div class="fb-menu-item">Integrations</div>
+        <div class="fb-menu-item">Reports</div>
+        <div class="fb-menu-item">Tools</div>
+        <div class="fb-menu-item">Help</div>
+
+        <!-- Reporting dropdown -->
+        <div class="fb-dropdown" id="reporting-dropdown" style="left:0">
+            <div class="fb-dd-item">📊 BI Report</div>
+            <div class="fb-dd-item">✏️ BI Editor</div>
+            <div class="fb-dd-item">🗄️ Data</div>
+            <div class="fb-dd-item">📋 Reports</div>
+            <div class="fb-dd-sep"></div>
+            <div class="fb-dd-item">🤖 ILC AI</div>
+            <div class="fb-dd-item active-nav" id="dd-cloudpages">☁️ CloudPages</div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="fb-toolbar" id="fb-toolbar">
+        <button class="tb-btn"><span class="tb-icon">💾</span>Save Layout</button>
+        <button class="tb-btn"><span class="tb-icon">📂</span>Load Layout</button>
+        <div class="tb-sep"></div>
+        <button class="tb-btn"><span class="tb-icon">📧</span>Email</button>
+        <button class="tb-btn"><span class="tb-icon">🖨️</span>Print</button>
+        <button class="tb-btn"><span class="tb-icon">❓</span>How To</button>
+        <div class="tb-sep"></div>
+        <button class="tb-btn"><span class="tb-icon">🔄</span>Refresh</button>
+    </div>
+
+    <!-- Body -->
+    <div class="fb-body">
+
+        <!-- Sidebar -->
+        <div class="fb-sidebar" id="fb-sidebar">
+            <div class="sb-modules-bar">Modules <span>⊞ ⊟</span></div>
+
+            <div class="sb-group expanded" id="sbg-general">
+                <div class="sb-group-title">🏠 General <span class="sb-arrow">▶</span></div>
+                <div class="sb-group-items">
+                    <div class="sb-item" id="sb-home">Home</div>
+                    <div class="sb-item active" id="sb-dashboard">Dashboard</div>
+                    <div class="sb-item">Calendar</div>
+                </div>
+            </div>
+
+            <div class="sb-group" id="sbg-reporting">
+                <div class="sb-group-title">📊 Reporting <span class="sb-arrow">▶</span></div>
+                <div class="sb-group-items" id="sb-reporting-items">
+                    <!-- populated when navigating to CloudPages -->
+                </div>
+            </div>
+
+            <div class="sb-group"><div class="sb-group-title">🧱 Materials <span class="sb-arrow">▶</span></div><div class="sb-group-items"></div></div>
+            <div class="sb-group"><div class="sb-group-title">💼 Sales <span class="sb-arrow">▶</span></div><div class="sb-group-items"></div></div>
+            <div class="sb-group"><div class="sb-group-title">🛒 Purchasing <span class="sb-arrow">▶</span></div><div class="sb-group-items"></div></div>
+            <div class="sb-group"><div class="sb-group-title">🏭 Manufacturing <span class="sb-arrow">▶</span></div><div class="sb-group-items"></div></div>
+            <div class="sb-group"><div class="sb-group-title">💰 Accounting <span class="sb-arrow">▶</span></div><div class="sb-group-items"></div></div>
+            <div class="sb-group"><div class="sb-group-title">⚙️ Setup <span class="sb-arrow">▶</span></div><div class="sb-group-items"></div></div>
+            <div class="sb-group"><div class="sb-group-title">🔌 Integrations <span class="sb-arrow">▶</span></div><div class="sb-group-items"></div></div>
+        </div>
+
+        <!-- Main content -->
+        <div class="fb-main">
+
+            <div class="fb-tabbar" id="fb-tabbar">
+                <div class="fb-tab">Home</div>
+                <div class="fb-tab active" id="tab-dashboard">Dashboard</div>
+            </div>
+
+            <div class="fb-content" id="fb-content">
+
+                <!-- Dashboard panel -->
+                <div class="fb-panel active" id="panel-dashboard">
+                    <div class="dash-title">Dashboard: Thursday, March 12, 2026</div>
+                    <div class="dash-grid">
+
+                        <div class="dash-gadget">
+                            <div class="dash-gadget-head">📋 Open Sales Orders</div>
+                            <div class="dash-gadget-body">
+                                <table class="dash-table">
+                                    <tr><th>Number</th><th>Customer Name</th></tr>
+                                    <tr><td><a href="#">1005</a></td><td>Mark Bennett</td></tr>
+                                    <tr><td><a href="#">1007</a></td><td>Patricia Beverages</td></tr>
+                                    <tr><td><a href="#">1022</a></td><td>Mountaineer Catering</td></tr>
+                                    <tr><td><a href="#">1023</a></td><td>Mountaineer Catering</td></tr>
+                                    <tr><td><a href="#">1024</a></td><td>Allen's Groceries</td></tr>
+                                    <tr><td><a href="#">1038</a></td><td>Karen Smith</td></tr>
+                                    <tr><td><a href="#">1054</a></td><td>Jim's Bake Shop</td></tr>
+                                    <tr><td><a href="#">1055</a></td><td>Baker Frontier</td></tr>
+                                    <tr><td><a href="#">1056</a></td><td>Mark Bennett</td></tr>
+                                </table>
+                            </div>
+                            <div class="dash-foot">Records 1–17 of 17</div>
+                        </div>
+
+                        <div class="dash-gadget">
+                            <div class="dash-gadget-head">📦 Items to be Received</div>
+                            <div class="dash-gadget-body">
+                                <table class="dash-table">
+                                    <tr><th>T…</th><th>Number</th><th>Status</th><th>Vendor</th></tr>
+                                    <tr><td>PO</td><td><a href="#">19</a></td><td>Entered</td><td>Rocky Mountain Chocolate</td></tr>
+                                    <tr><td>PO</td><td><a href="#">46</a></td><td>Entered</td><td>Brent's Food Supply</td></tr>
+                                    <tr><td>PO</td><td><a href="#">47</a></td><td>Entered</td><td>Brent's Food Supply</td></tr>
+                                    <tr><td>PO</td><td><a href="#">48</a></td><td>Entered</td><td>Brent's Food Supply</td></tr>
+                                    <tr><td>PO</td><td><a href="#">49</a></td><td>Entered</td><td>Brent's Food Supply</td></tr>
+                                    <tr><td>PO</td><td><a href="#">50</a></td><td>Entered</td><td>Brent's Food Supply</td></tr>
+                                    <tr><td>SO</td><td><a href="#">1055</a></td><td>Entered</td><td>Baker Frontier</td></tr>
+                                </table>
+                            </div>
+                            <div class="dash-foot">Records 1–7 of 7</div>
+                        </div>
+
+                        <div class="dash-gadget">
+                            <div class="dash-gadget-head">🔗 Quick Links</div>
+                            <div class="quick-links">
+                                <h4>Customer</h4>
+                                <a href="#">New Customer...</a>
+                                <a href="#">Sales Orders...</a>
+                                <a href="#">Ship Orders...</a>
+                                <h4>Vendors</h4>
+                                <a href="#">New Vendor...</a>
+                                <a href="#">New Part...</a>
+                                <a href="#">Purchase Orders...</a>
+                                <h4>Administration</h4>
+                                <a href="#">User Administration...</a>
+                                <a href="#">Export to QuickBooks...</a>
+                            </div>
+                        </div>
+
+                        <div class="dash-gadget">
+                            <div class="dash-gadget-head">🚚 Items to be Picked</div>
+                            <div class="dash-gadget-body">
+                                <table class="dash-table">
+                                    <tr><th>Fin…</th><th>Pick</th><th>Status</th><th>Priority</th><th>Order Num</th></tr>
+                                    <tr><td>🟢</td><td><a href="#">S1007</a></td><td>Entered</td><td>3-Normal</td><td>SO1007</td></tr>
+                                    <tr><td>🟢</td><td><a href="#">S1022</a></td><td>Entered</td><td>3-Normal</td><td>SO1022</td></tr>
+                                    <tr><td>🟢</td><td><a href="#">S1023</a></td><td>Entered</td><td>3-Normal</td><td>SO1023</td></tr>
+                                    <tr><td>🟢</td><td><a href="#">S1024</a></td><td>Entered</td><td>3-Normal</td><td>SO1024</td></tr>
+                                    <tr><td>🟢</td><td><a href="#">S1054</a></td><td>Entered</td><td>3-Normal</td><td>SO1054</td></tr>
+                                </table>
+                            </div>
+                            <div class="dash-foot">Records 1–5 of 5</div>
+                        </div>
+
+                        <div class="dash-gadget">
+                            <div class="dash-gadget-head">📬 Items to be Shipped</div>
+                            <div class="dash-gadget-body">
+                                <table class="dash-table">
+                                    <tr><th>Type</th><th>Ship Num</th><th>Ship To</th><th>Status</th></tr>
+                                    <tr><td>SO</td><td><a href="#">S1005</a></td><td>Mark Bennett</td><td>Entered</td></tr>
+                                    <tr><td>SO</td><td><a href="#">S1106</a></td><td>Allen's Groceries</td><td>Entered</td></tr>
+                                    <tr><td>SO</td><td><a href="#">S1108</a></td><td>Allen's Groceries</td><td>Entered</td></tr>
+                                    <tr><td>SO</td><td><a href="#">S1110</a></td><td>Allen's Groceries</td><td>Packed</td></tr>
+                                </table>
+                            </div>
+                            <div class="dash-foot">Records 1–4 of 4</div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- CloudPages Available Pages panel -->
+                <div class="fb-panel" id="panel-cloudpages">
+                    <div class="pages-title">Available Pages</div>
+                    <input type="text" class="pages-search" id="pages-search" placeholder="Search pages by title...">
+                    <div class="pages-group">
+                        <div class="pages-group-head">▶ CloudPages Demos [main]</div>
+                        <table class="pages-table" id="pages-table">
+                            <tr>
+                                <th>Title</th>
+                                <th>Description</th>
+                                <th style="width:100px">Actions</th>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+            </div><!-- /fb-content -->
+        </div><!-- /fb-main -->
+
+        <!-- CloudPages popup — positioned over fb-body -->
+        <div class="cp-popup-overlay" id="cp-popup-overlay">
+            <div class="cp-popup" id="cp-popup">
+                <div class="cp-popup-titlebar" id="cp-popup-titlebar">
+                    <span style="font-size:13px">☁️</span>
+                    <span class="cp-popup-title" id="cp-popup-title">Sales Summary — 3/12/26, 2:58 PM</span>
+                    <div style="display:flex;gap:3px;">
+                        <div class="cp-win-btn">—</div>
+                        <div class="cp-win-btn">⬜</div>
+                        <div class="cp-win-btn close" id="cp-popup-close">✕</div>
+                    </div>
+                </div>
+                <div class="cp-popup-toolbar">
+                    <button class="cp-tb-btn"><span class="cp-tb-icon">❓</span>Help</button>
+                    <button class="cp-tb-btn"><span class="cp-tb-icon">🔄</span>Refresh</button>
+                    <button class="cp-tb-btn"><span class="cp-tb-icon">📁</span>Fold...</button>
+                    <button class="cp-tb-btn"><span class="cp-tb-icon">⛶</span>Full Screen F...</button>
+                </div>
+                <div class="cp-popup-body">
+                    <iframe id="cp-popup-iframe" class="cp-popup-iframe" src="about:blank"></iframe>
+                    <div class="cp-popup-shield" id="cp-popup-shield"></div>
+                </div>
+                <!-- Resize handles -->
+                <div class="cp-resize-e"  id="cp-resize-e"></div>
+                <div class="cp-resize-s"  id="cp-resize-s"></div>
+                <div class="cp-resize-se" id="cp-resize-se"></div>
+                <div class="cp-popup-statusbar" id="cp-popup-status">Ready...</div>
+            </div>
+        </div>
+
+    </div><!-- /fb-body -->
+
+</div><!-- /fb-window -->
+
+<script>
+    // ── Demo pages registry — add new demos here ─────────────────────
+    var DEMO_PAGES = [
+        {
+            title: 'Sales Summary',
+            description: 'Sales orders by customer and date range',
+            file: 'SalesSummarySimple.html'
+        }
+    ];
+
+    // ── Hint bar ─────────────────────────────────────────────────────
+    document.getElementById('hint-dismiss').addEventListener('click', function () {
+        document.getElementById('hint-bar').classList.add('hidden');
+    });
+
+    // ── Sidebar group toggle ──────────────────────────────────────────
+    document.querySelectorAll('.sb-group-title').forEach(function (el) {
+        el.addEventListener('click', function () {
+            el.closest('.sb-group').classList.toggle('expanded');
+        });
+    });
+
+    // ── Reporting menu ────────────────────────────────────────────────
+    var menuReporting = document.getElementById('menu-reporting');
+    var dropdown      = document.getElementById('reporting-dropdown');
+
+    menuReporting.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var rect = menuReporting.getBoundingClientRect();
+        var barRect = document.getElementById('fb-menubar').getBoundingClientRect();
+        dropdown.style.left = (rect.left - barRect.left) + 'px';
+        dropdown.classList.toggle('show');
+        menuReporting.classList.toggle('open');
+    });
+
+    document.addEventListener('click', function () {
+        dropdown.classList.remove('show');
+        menuReporting.classList.remove('open');
+    });
+
+    document.getElementById('dd-cloudpages').addEventListener('click', function (e) {
+        e.stopPropagation();
+        dropdown.classList.remove('show');
+        menuReporting.classList.remove('open');
+        goToCloudPages();
+    });
+
+    // ── Navigate to CloudPages ────────────────────────────────────────
+    function goToCloudPages() {
+        // Toolbar
+        document.getElementById('fb-toolbar').innerHTML = [
+            '<button class="tb-btn"><span class="tb-icon">➕</span>New</button>',
+            '<button class="tb-btn"><span class="tb-icon">🐛</span>Enable Debug</button>',
+            '<div class="tb-sep"></div>',
+            '<button class="tb-btn"><span class="tb-icon">🔄</span>Refresh</button>'
+        ].join('');
+
+        // Tabs
+        document.getElementById('fb-tabbar').innerHTML = [
+            '<div class="fb-tab">Home</div>',
+            '<div class="fb-tab">Dashboard</div>',
+            '<div class="fb-tab active">CloudPages</div>'
+        ].join('');
+
+        // Sidebar — expand Reporting, deactivate Dashboard
+        document.getElementById('sb-dashboard').classList.remove('active');
+        document.getElementById('sbg-general').classList.remove('expanded');
+        document.getElementById('sbg-reporting').classList.add('expanded');
+        document.getElementById('sb-reporting-items').innerHTML = [
+            '<div class="sb-item">BI Report</div>',
+            '<div class="sb-item">BI Editor</div>',
+            '<div class="sb-item">Data</div>',
+            '<div class="sb-item">Reports</div>',
+            '<div class="sb-item active">CloudPages</div>',
+            '<div class="sb-item">ILC AI</div>'
+        ].join('');
+
+        // Panels
+        document.getElementById('panel-dashboard').classList.remove('active');
+        document.getElementById('panel-cloudpages').classList.add('active');
+
+        // Hint
+        document.getElementById('hint-text').innerHTML =
+            'You\'re now in <strong>Reporting → CloudPages</strong>. Click <strong>Open</strong> next to a report to launch it.';
+        document.getElementById('hint-bar').classList.remove('hidden');
+
+        buildPagesTable(DEMO_PAGES);
+    }
+
+    // ── Build the Available Pages table ──────────────────────────────
+    function buildPagesTable(pages) {
+        var table = document.getElementById('pages-table');
+        var rows = pages.map(function (p) {
+            return '<tr>' +
+                '<td>' + escHtml(p.title) + '</td>' +
+                '<td style="color:#666">' + escHtml(p.description) + '</td>' +
+                '<td><button class="open-btn" data-file="' + escHtml(p.file) + '" data-title="' + escHtml(p.title) + '">Open</button></td>' +
+                '</tr>';
+        }).join('');
+        table.innerHTML = '<tr><th>Title</th><th>Description</th><th style="width:100px">Actions</th></tr>' + rows;
+
+        table.querySelectorAll('.open-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                openReport(btn.dataset.file, btn.dataset.title);
+            });
+        });
+    }
+
+    // ── Search filter ─────────────────────────────────────────────────
+    document.getElementById('pages-search').addEventListener('input', function () {
+        var q = this.value.toLowerCase();
+        var filtered = DEMO_PAGES.filter(function (p) {
+            return p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q);
+        });
+        buildPagesTable(filtered);
+    });
+
+    // ── Open a report in the popup ────────────────────────────────────
+    function openReport(file, title) {
+        var now = new Date();
+        var ds = (now.getMonth() + 1) + '/' + now.getDate() + '/' +
+                 String(now.getFullYear()).slice(2) + ', ' +
+                 now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+        document.getElementById('cp-popup-title').textContent = title + ' — ' + ds;
+        document.getElementById('cp-popup-status').textContent = 'Loading...';
+        document.getElementById('cp-popup-iframe').src = file;
+        document.getElementById('cp-popup-overlay').classList.add('show');
+
+        document.getElementById('hint-bar').classList.add('hidden');
+
+        document.getElementById('cp-popup-iframe').onload = function () {
+            document.getElementById('cp-popup-status').textContent = 'Ready...';
+        };
+    }
+
+    // ── Close popup ───────────────────────────────────────────────────
+    document.getElementById('cp-popup-close').addEventListener('click', function () {
+        document.getElementById('cp-popup-overlay').classList.remove('show');
+        document.getElementById('cp-popup-iframe').src = 'about:blank';
+    });
+
+    // ── Drag + resize for popup window ───────────────────────────────
+    (function () {
+        var popup    = document.getElementById('cp-popup');
+        var titlebar = document.getElementById('cp-popup-titlebar');
+        var shield   = document.getElementById('cp-popup-shield');
+
+        var action = null; // 'drag' | 'e' | 's' | 'se'
+        var startX, startY, startL, startT, startW, startH;
+
+        function normalizePopup() {
+            var rect = popup.getBoundingClientRect();
+            var parentRect = popup.offsetParent.getBoundingClientRect();
+            popup.style.left   = (rect.left - parentRect.left) + 'px';
+            popup.style.top    = (rect.top  - parentRect.top)  + 'px';
+            popup.style.width  = rect.width  + 'px';
+            popup.style.height = rect.height + 'px';
+            popup.style.right  = 'auto';
+            popup.style.bottom = 'auto';
+        }
+
+        function startOp(e, type) {
+            e.preventDefault();
+            e.stopPropagation();
+            normalizePopup();
+            action = type;
+            startX = e.clientX;
+            startY = e.clientY;
+            startL = parseFloat(popup.style.left);
+            startT = parseFloat(popup.style.top);
+            startW = parseFloat(popup.style.width);
+            startH = parseFloat(popup.style.height);
+            shield.classList.add('active');
+            document.body.style.userSelect = 'none';
+        }
+
+        titlebar.addEventListener('mousedown', function (e) {
+            // Don't start drag when clicking window control buttons
+            if (e.target.classList.contains('cp-win-btn')) return;
+            startOp(e, 'drag');
+        });
+
+        document.getElementById('cp-resize-e').addEventListener('mousedown',  function (e) { startOp(e, 'e');  });
+        document.getElementById('cp-resize-s').addEventListener('mousedown',  function (e) { startOp(e, 's');  });
+        document.getElementById('cp-resize-se').addEventListener('mousedown', function (e) { startOp(e, 'se'); });
+
+        document.addEventListener('mousemove', function (e) {
+            if (!action) return;
+            var dx = e.clientX - startX;
+            var dy = e.clientY - startY;
+            if (action === 'drag') {
+                popup.style.left = (startL + dx) + 'px';
+                popup.style.top  = (startT + dy) + 'px';
+            } else {
+                if (action === 'e'  || action === 'se') popup.style.width  = Math.max(320, startW + dx) + 'px';
+                if (action === 's'  || action === 'se') popup.style.height = Math.max(220, startH + dy) + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', function () {
+            if (!action) return;
+            action = null;
+            shield.classList.remove('active');
+            document.body.style.userSelect = '';
+        });
+    })();
+
+    // ── Utility ───────────────────────────────────────────────────────
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+</script>
+</body>
+</html>
