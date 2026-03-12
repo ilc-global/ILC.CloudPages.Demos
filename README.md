@@ -11,6 +11,8 @@ These demos are designed to work two ways:
 
 ## Try it — No Installation Required
 
+![CloudPages demo walkthrough](docs/images/quick-demo-short.apng)
+
 **[Launch the Fishbowl Client Simulator →](https://ilc-global.github.io/ILC.CloudPages.Demos/viewer.html)**
 
 The simulator gives you a feel for the Fishbowl Client experience without installing anything:
