@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="fb_path" content="CloudPages:Demos/SalesSummarySimple">
+    <meta name="fb_modules" content="*">
+    <meta name="fb_title" content="Sales Summary">
+    <meta name="fb_description" content="Sales orders by customer and date range">
+    <meta name="window_state" content="maximized">
+    <title>Sales Summary</title>
+
+    <!-- Local styles -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="css/cloudpages.css">
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">CloudPages Demos</a>
+            <span class="navbar-text text-light">Sales Summary</span>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-3">
+        <div id="parametersContainer" class="mb-3"></div>
+        <div class="mb-3">
+            <button id="submitButton" class="btn btn-primary">Run Report</button>
+            <button id="exportBtn" class="btn btn-outline-secondary">Export</button>
+        </div>
+        <div id="tableContainer"></div>
+    </div>
+
+    <!-- Local scripts -->
+    <script src="js/jquery.min.js"></script>
+    <script src="js/jquery.dataTables.min.js"></script>
+    <script src="js/dataTables.bootstrap5.min.js"></script>
+    <script src="js/xlsx.full.min.js"></script>
+    <script src="js/fb.js"></script>
+
+    <!-- Demo mode configuration — runs before cloudpages.js initializes -->
+    <script>
+        FB.configure({
+            environment: 'demo',
+            demoData: {
+                queries: {
+                    // Matched via substring against the customer dropdown SQL
+                    "FROM customer WHERE activeFlag": [
+                        { id: 1, name: "ABC Manufacturing" },
+                        { id: 2, name: "XYZ Distribution" },
+                        { id: 3, name: "Acme Industrial" },
+                        { id: 4, name: "Pinnacle Supply Co." }
+                    ],
+                    // Matched via substring against the main report SQL
+                    "so.num AS so_num": [
+                        { so_num: "50001", customer_name: "ABC Manufacturing",  date_issued: "2025-01-08", total_price: 4250.00, product_num: "WIDGET-A",  qty_fulfilled: 10 },
+                        { so_num: "50002", customer_name: "ABC Manufacturing",  date_issued: "2025-01-22", total_price: 875.50,  product_num: "WIDGET-B",  qty_fulfilled: 3  },
+                        { so_num: "50003", customer_name: "ABC Manufacturing",  date_issued: "2025-02-14", total_price: 3100.00, product_num: "WIDGET-A",  qty_fulfilled: 7  },
+                        { so_num: "50004", customer_name: "XYZ Distribution",   date_issued: "2025-01-30", total_price: 1540.25, product_num: "GADGET-X",  qty_fulfilled: 5  },
+                        { so_num: "50005", customer_name: "XYZ Distribution",   date_issued: "2025-02-20", total_price: 6800.00, product_num: "GADGET-Y",  qty_fulfilled: 20 },
+                        { so_num: "50006", customer_name: "Acme Industrial",    date_issued: "2025-03-05", total_price: 990.00,  product_num: "PART-001",  qty_fulfilled: 2  },
+                        { so_num: "50007", customer_name: "Pinnacle Supply Co.",date_issued: "2025-03-11", total_price: 12500.00,"product_num": "PART-002", qty_fulfilled: 50 }
+                    ]
+                },
+                user: {
+                    companyName: "Acme Manufacturing",
+                    username: "jsmith",
+                    email: "jsmith@acme.com",
+                    userId: 1,
+                    groups: ["1"]
+                }
+            }
+        });
+    </script>
+
+    <script src="js/cloudpages.js"></script>
+
+    <!-- CloudPages declarative config -->
+
+    <script id="settings" type="application/json">
+    {
+        "load_on_open": false,
+        "page_length": 25,
+        "enable_xlsx_export": true,
+        "enable_csv_export": true,
+        "amount_unit_format": "$0.00",
+        "qty_unit_format": "0.##"
+    }
+    </script>
+
+    <script id="parameters" type="application/json">
+    {
+        "customer": {
+            "label": "Customer",
+            "type": "dropdown",
+            "mode": "single",
+            "sql": "SELECT id, name FROM customer WHERE activeFlag = 1",
+            "value": "id",
+            "display": "name",
+            "required": true
+        },
+        "date_issued": {
+            "label": "Date Issued",
+            "type": "date",
+            "mode": "range",
+            "required": true
+        }
+    }
+    </script>
+
+    <script id="query" type="text/plain">
+    SELECT
+        so.num          AS so_num,
+        customer.name   AS customer_name,
+        so.dateIssued   AS date_issued,
+        so.totalPrice   AS total_price,
+        soitem.productNum   AS product_num,
+        soitem.qtyFulfilled AS qty_fulfilled
+    FROM so
+        JOIN customer ON customer.id = so.customerId
+        JOIN soitem   ON soitem.soId = so.id
+    WHERE so.customerId = :customer
+        AND DATE(so.dateIssued) BETWEEN :date_issued_start AND :date_issued_end
+    ORDER BY so.dateIssued DESC
+    </script>
+
+    <script id="columns" type="application/json">
+    {
+        "so_num":        { "label": "SO #" },
+        "customer_name": { "label": "Customer" },
+        "date_issued":   { "label": "Date", "format": "date" },
+        "total_price":   { "label": "Total", "format": "currency" },
+        "product_num":   { "label": "Product" },
+        "qty_fulfilled": { "label": "Qty", "format": "number" }
+    }
+    </script>
+
+</body>
+</html>

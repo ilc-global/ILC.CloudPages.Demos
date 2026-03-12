@@ -1,0 +1,79 @@
+/* cloudpages.css — ILC CloudPages Report Engine Styles */
+
+/* Parameters container */
+#parametersContainer {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+/* Required asterisk */
+.cp-required {
+    color: #dc3545;
+}
+
+/* Range inputs */
+.cp-range-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cp-range-group .form-control {
+    flex: 1;
+}
+
+.cp-range-divider {
+    color: #6c757d;
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+/* Autocomplete */
+.cp-autocomplete-container {
+    position: relative;
+}
+
+.cp-autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #fff;
+    z-index: 1050;
+    display: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.cp-autocomplete-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.cp-autocomplete-item:hover,
+.cp-autocomplete-highlight {
+    background-color: #e9ecef;
+}
+
+.cp-autocomplete-no-results {
+    padding: 8px 12px;
+    color: #6c757d;
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+/* Table container */
+#tableContainer {
+    margin-top: 1rem;
+}
+
+#tableContainer .table {
+    width: 100% !important;
+}

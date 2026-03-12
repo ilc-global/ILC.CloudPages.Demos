@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="fb_path" content="CloudPages:Demos">
+    <meta name="fb_modules" content="*">
+    <meta name="fb_title" content="Sales Summary">
+    <title>Sales Summary</title>
+
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <script src="js/bootstrap.bundle.min.js"></script>
+    <script src="js/fb.js"></script>
+
+    <style>
+        body { background: #f5f6fa; }
+        .kpi-card { border: none; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+        .kpi-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: #6c757d; }
+        .kpi-value { font-size: 1.75rem; font-weight: 700; line-height: 1.1; }
+        .kpi-sub   { font-size: .8rem; color: #6c757d; }
+        .filter-bar { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.06); padding: 12px 16px; }
+        .table-card { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+        .table-sortable th { cursor: pointer; user-select: none; white-space: nowrap; }
+        .table-sortable th:hover { background: #f0f4ff; }
+        .sort-icon { float: right; color: #bbb; font-size: .75em; margin-left: 4px; }
+        .sort-icon.asc::after  { content: " ▲"; color: #0d6efd; }
+        .sort-icon.desc::after { content: " ▼"; color: #0d6efd; }
+        .sort-icon:not(.asc):not(.desc)::after { content: " ⇅"; }
+        .badge-status-fulfilled  { background: #d1fae5; color: #065f46; }
+        .badge-status-shipped    { background: #dbeafe; color: #1e40af; }
+        .badge-status-processing { background: #fef9c3; color: #713f12; }
+        .badge-status-pending    { background: #f3f4f6; color: #374151; }
+        .badge-status-cancelled  { background: #fee2e2; color: #991b1b; }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: .78rem; font-weight: 600; }
+        tfoot tr td { font-weight: 700; background: #f8f9fa; }
+        #fb-status { font-size: .82rem; color: #6c757d; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid py-3 px-4">
+
+    <!-- Page header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="mb-0 fw-bold">Sales Summary</h4>
+            <small class="text-muted" id="headerSub">Loading...</small>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-primary" id="btnExport">Export CSV</button>
+            <button class="btn btn-sm btn-outline-secondary" id="btnRefresh">&#x21bb; Refresh</button>
+        </div>
+    </div>
+
+    <!-- KPI row -->
+    <div class="row g-3 mb-3" id="kpiRow">
+        <div class="col-6 col-md-3">
+            <div class="card kpi-card p-3">
+                <div class="kpi-label">Total Revenue</div>
+                <div class="kpi-value text-primary" id="kpiRevenue">—</div>
+                <div class="kpi-sub" id="kpiRevenueSub">&nbsp;</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card kpi-card p-3">
+                <div class="kpi-label">Orders</div>
+                <div class="kpi-value text-success" id="kpiOrders">—</div>
+                <div class="kpi-sub" id="kpiOrdersSub">&nbsp;</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card kpi-card p-3">
+                <div class="kpi-label">Avg Order Value</div>
+                <div class="kpi-value text-info" id="kpiAOV">—</div>
+                <div class="kpi-sub" id="kpiAOVSub">&nbsp;</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card kpi-card p-3">
+                <div class="kpi-label">Customers</div>
+                <div class="kpi-value text-warning" id="kpiCustomers">—</div>
+                <div class="kpi-sub" id="kpiCustomersSub">&nbsp;</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar mb-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label mb-0 small fw-semibold">Date From</label>
+                <input type="date" class="form-control form-control-sm" id="dateFrom" value="2024-01-01">
+            </div>
+            <div class="col-auto">
+                <label class="form-label mb-0 small fw-semibold">Date To</label>
+                <input type="date" class="form-control form-control-sm" id="dateTo" value="2024-12-31">
+            </div>
+            <div class="col-auto">
+                <label class="form-label mb-0 small fw-semibold">Customer</label>
+                <select class="form-select form-select-sm" id="filterCustomer" style="min-width:130px">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label mb-0 small fw-semibold">Sales Rep</label>
+                <select class="form-select form-select-sm" id="filterRep" style="min-width:120px">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label mb-0 small fw-semibold">Status</label>
+                <select class="form-select form-select-sm" id="filterStatus">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-sm btn-primary" id="btnFilter">Apply</button>
+                <button class="btn btn-sm btn-link text-secondary ps-2" id="btnClear">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card p-0 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover table-sortable mb-0" id="dataTable">
+                <thead class="table-light">
+                    <tr>
+                        <th data-col="OrderNumber">Order # <span class="sort-icon" id="si-OrderNumber"></span></th>
+                        <th data-col="OrderDate">Date <span class="sort-icon" id="si-OrderDate"></span></th>
+                        <th data-col="Customer">Customer <span class="sort-icon" id="si-Customer"></span></th>
+                        <th data-col="SalesRep">Sales Rep <span class="sort-icon" id="si-SalesRep"></span></th>
+                        <th data-col="Status">Status <span class="sort-icon" id="si-Status"></span></th>
+                        <th data-col="ItemCount" class="text-end">Items <span class="sort-icon" id="si-ItemCount"></span></th>
+                        <th data-col="Subtotal" class="text-end">Subtotal <span class="sort-icon" id="si-Subtotal"></span></th>
+                        <th data-col="Tax" class="text-end">Tax <span class="sort-icon" id="si-Tax"></span></th>
+                        <th data-col="Total" class="text-end">Total <span class="sort-icon" id="si-Total"></span></th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="9" class="text-center text-muted py-4">Loading...</td></tr>
+                </tbody>
+                <tfoot id="tableFoot"></tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="d-flex align-items-center gap-2 mt-2">
+        <progress id="fb-progress" value="0" max="100" style="width:120px; display:none"></progress>
+        <span id="fb-status"></span>
+    </div>
+
+</div>
+
+<!-- ── SQL template ────────────────────────────────────────────────────── -->
+<script type="text/plain" id="salesQuery">
+SELECT OrderNumber, OrderDate, Customer, SalesRep, Status,
+       ItemCount, Subtotal, Tax, Total
+FROM SalesOrders
+WHERE OrderDate >= :dateFrom AND OrderDate <= :dateTo
+ORDER BY OrderDate DESC
+</script>
+
+<!-- ── fb.js is loaded in <head>; no fishbowl.js needed for this page ── -->
+<script>
+(function () {
+    'use strict';
+
+    // ── Demo data ──────────────────────────────────────────────────────
+    var DEMO_ROWS = [
+        { OrderNumber: "SO-10042", OrderDate: "2024-11-14", Customer: "Acme Corp",        SalesRep: "Alice Turner",  Status: "Fulfilled",  ItemCount: 4, Subtotal: 3200.00, Tax: 256.00, Total: 3456.00 },
+        { OrderNumber: "SO-10041", OrderDate: "2024-11-12", Customer: "Beta LLC",          SalesRep: "Bob Marsh",    Status: "Shipped",    ItemCount: 2, Subtotal: 1150.00, Tax:  92.00, Total: 1242.00 },
+        { OrderNumber: "SO-10040", OrderDate: "2024-11-11", Customer: "Gamma Industries",  SalesRep: "Alice Turner",  Status: "Fulfilled",  ItemCount: 6, Subtotal: 5480.00, Tax: 438.40, Total: 5918.40 },
+        { OrderNumber: "SO-10039", OrderDate: "2024-11-08", Customer: "Delta Systems",     SalesRep: "Carol King",   Status: "Processing", ItemCount: 1, Subtotal:  890.00, Tax:  71.20, Total:  961.20 },
+        { OrderNumber: "SO-10038", OrderDate: "2024-11-06", Customer: "Epsilon Partners",  SalesRep: "Bob Marsh",    Status: "Fulfilled",  ItemCount: 3, Subtotal: 2750.00, Tax: 220.00, Total: 2970.00 },
+        { OrderNumber: "SO-10037", OrderDate: "2024-11-05", Customer: "Zeta Group",        SalesRep: "Carol King",   Status: "Shipped",    ItemCount: 5, Subtotal: 4100.00, Tax: 328.00, Total: 4428.00 },
+        { OrderNumber: "SO-10036", OrderDate: "2024-11-01", Customer: "Eta Manufacturing", SalesRep: "Dave Lopez",   Status: "Fulfilled",  ItemCount: 8, Subtotal: 7200.00, Tax: 576.00, Total: 7776.00 },
+        { OrderNumber: "SO-10035", OrderDate: "2024-10-29", Customer: "Acme Corp",         SalesRep: "Alice Turner",  Status: "Fulfilled",  ItemCount: 2, Subtotal: 1400.00, Tax: 112.00, Total: 1512.00 },
+        { OrderNumber: "SO-10034", OrderDate: "2024-10-25", Customer: "Iota Solutions",    SalesRep: "Dave Lopez",   Status: "Cancelled",  ItemCount: 1, Subtotal:  650.00, Tax:  52.00, Total:  702.00 },
+        { OrderNumber: "SO-10033", OrderDate: "2024-10-22", Customer: "Beta LLC",          SalesRep: "Bob Marsh",    Status: "Fulfilled",  ItemCount: 3, Subtotal: 2200.00, Tax: 176.00, Total: 2376.00 },
+        { OrderNumber: "SO-10032", OrderDate: "2024-10-19", Customer: "Kappa Retail",      SalesRep: "Carol King",   Status: "Shipped",    ItemCount: 4, Subtotal: 3600.00, Tax: 288.00, Total: 3888.00 },
+        { OrderNumber: "SO-10031", OrderDate: "2024-10-15", Customer: "Gamma Industries",  SalesRep: "Alice Turner",  Status: "Fulfilled",  ItemCount: 7, Subtotal: 6100.00, Tax: 488.00, Total: 6588.00 },
+        { OrderNumber: "SO-10030", OrderDate: "2024-10-11", Customer: "Delta Systems",     SalesRep: "Carol King",   Status: "Fulfilled",  ItemCount: 2, Subtotal: 1800.00, Tax: 144.00, Total: 1944.00 },
+        { OrderNumber: "SO-10029", OrderDate: "2024-10-07", Customer: "Eta Manufacturing", SalesRep: "Dave Lopez",   Status: "Processing", ItemCount: 5, Subtotal: 4400.00, Tax: 352.00, Total: 4752.00 },
+        { OrderNumber: "SO-10028", OrderDate: "2024-10-03", Customer: "Epsilon Partners",  SalesRep: "Bob Marsh",    Status: "Fulfilled",  ItemCount: 3, Subtotal: 2900.00, Tax: 232.00, Total: 3132.00 },
+        { OrderNumber: "SO-10027", OrderDate: "2024-09-28", Customer: "Zeta Group",        SalesRep: "Carol King",   Status: "Fulfilled",  ItemCount: 6, Subtotal: 5200.00, Tax: 416.00, Total: 5616.00 },
+        { OrderNumber: "SO-10026", OrderDate: "2024-09-24", Customer: "Acme Corp",         SalesRep: "Alice Turner",  Status: "Shipped",    ItemCount: 1, Subtotal:  980.00, Tax:  78.40, Total: 1058.40 },
+        { OrderNumber: "SO-10025", OrderDate: "2024-09-20", Customer: "Iota Solutions",    SalesRep: "Dave Lopez",   Status: "Fulfilled",  ItemCount: 4, Subtotal: 3300.00, Tax: 264.00, Total: 3564.00 },
+        { OrderNumber: "SO-10024", OrderDate: "2024-09-16", Customer: "Beta LLC",          SalesRep: "Bob Marsh",    Status: "Pending",    ItemCount: 2, Subtotal: 1600.00, Tax: 128.00, Total: 1728.00 },
+        { OrderNumber: "SO-10023", OrderDate: "2024-09-12", Customer: "Kappa Retail",      SalesRep: "Carol King",   Status: "Fulfilled",  ItemCount: 9, Subtotal: 8100.00, Tax: 648.00, Total: 8748.00 }
+    ];
+
+    var STATUS_COLORS = {
+        "Fulfilled":  "fulfilled",
+        "Shipped":    "shipped",
+        "Processing": "processing",
+        "Pending":    "pending",
+        "Cancelled":  "cancelled"
+    };
+
+    // ── State ──────────────────────────────────────────────────────────
+    var allRows      = [];
+    var filteredRows = [];
+    var sortCol      = "OrderDate";
+    var sortAsc      = false;
+
+    // ── Init FB ────────────────────────────────────────────────────────
+    FB.configure({
+        environment: 'demo',
+        demoData: {
+            queries: { salesQuery: DEMO_ROWS },
+            user:    { companyName: "Acme Manufacturing", username: "jsmith", email: "jsmith@acme.com", userId: 42, groups: ["1"] },
+            context: { pluginName: "Sales Summary", moduleName: "Sales Order", objectId: 0 }
+        },
+        statusElement:   '#fb-status',
+        progressElement: '#fb-progress'
+    });
+
+    // ── Load data ──────────────────────────────────────────────────────
+    function loadData() {
+        setProgress(true);
+        FB.setStatus("Loading orders...");
+
+        var sql = document.getElementById("salesQuery").textContent.trim();
+        FB.queryAsync(sql).then(function (rows) {
+            allRows = rows;
+            populateFilters(rows);
+            applyFilters();
+            FB.setStatus(rows.length + " orders loaded");
+            setProgress(false);
+        }).catch(function (err) {
+            FB.setStatus("Error: " + err.message);
+            setProgress(false);
+            document.getElementById("tableBody").innerHTML =
+                '<tr><td colspan="9" class="text-center text-danger py-4">Failed to load data.</td></tr>';
+        });
+    }
+
+    function setProgress(visible) {
+        document.getElementById("fb-progress").style.display = visible ? "" : "none";
+        FB.setProgress(visible ? 50 : 100);
+    }
+
+    // ── Populate filter dropdowns ──────────────────────────────────────
+    function populateFilters(rows) {
+        var customers = {}, reps = {}, statuses = {};
+        rows.forEach(function (r) {
+            customers[r.Customer] = true;
+            reps[r.SalesRep]      = true;
+            statuses[r.Status]    = true;
+        });
+        fillSelect("filterCustomer", Object.keys(customers).sort());
+        fillSelect("filterRep",      Object.keys(reps).sort());
+        fillSelect("filterStatus",   Object.keys(statuses).sort());
+    }
+
+    function fillSelect(id, values) {
+        var el = document.getElementById(id);
+        var cur = el.value;
+        el.innerHTML = '<option value="">All</option>';
+        values.forEach(function (v) {
+            el.innerHTML += '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(v) + '</option>';
+        });
+    }
+
+    // ── Apply filters ──────────────────────────────────────────────────
+    function applyFilters() {
+        var from     = document.getElementById("dateFrom").value;
+        var to       = document.getElementById("dateTo").value;
+        var customer = document.getElementById("filterCustomer").value;
+        var rep      = document.getElementById("filterRep").value;
+        var status   = document.getElementById("filterStatus").value;
+
+        filteredRows = allRows.filter(function (r) {
+            if (from     && r.OrderDate < from)          return false;
+            if (to       && r.OrderDate > to)            return false;
+            if (customer && r.Customer  !== customer)    return false;
+            if (rep      && r.SalesRep  !== rep)         return false;
+            if (status   && r.Status    !== status)      return false;
+            return true;
+        });
+
+        sortAndRender();
+        updateKPIs(filteredRows);
+        updateHeader(filteredRows);
+    }
+
+    // ── Sort ───────────────────────────────────────────────────────────
+    function sortBy(col) {
+        if (sortCol === col) sortAsc = !sortAsc;
+        else { sortCol = col; sortAsc = true; }
+        sortAndRender();
+    }
+
+    function sortAndRender() {
+        if (sortCol) {
+            var col = sortCol, asc = sortAsc;
+            filteredRows = filteredRows.slice().sort(function (a, b) {
+                var va = a[col], vb = b[col];
+                if (typeof va === "number" && typeof vb === "number") return asc ? va - vb : vb - va;
+                va = String(va || ""); vb = String(vb || "");
+                return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+            });
+        }
+        updateSortIcons();
+        renderTable(filteredRows);
+    }
+
+    function updateSortIcons() {
+        document.querySelectorAll(".sort-icon").forEach(function (el) {
+            var col = el.id.replace("si-", "");
+            el.className = "sort-icon" + (col === sortCol ? (sortAsc ? " asc" : " desc") : "");
+        });
+    }
+
+    // ── Render table ───────────────────────────────────────────────────
+    function renderTable(rows) {
+        var tbody = document.getElementById("tableBody");
+        if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No orders match the current filters.</td></tr>';
+            document.getElementById("tableFoot").innerHTML = "";
+            return;
+        }
+
+        var totals = { ItemCount: 0, Subtotal: 0, Tax: 0, Total: 0 };
+        var html = "";
+
+        rows.forEach(function (r) {
+            totals.ItemCount += r.ItemCount;
+            totals.Subtotal  += r.Subtotal;
+            totals.Tax       += r.Tax;
+            totals.Total     += r.Total;
+
+            var statusClass = "badge-status-" + (STATUS_COLORS[r.Status] || "pending");
+            html += "<tr>" +
+                "<td><strong>" + esc(r.OrderNumber) + "</strong></td>" +
+                "<td>" + formatDate(r.OrderDate) + "</td>" +
+                "<td>" + esc(r.Customer) + "</td>" +
+                "<td>" + esc(r.SalesRep) + "</td>" +
+                '<td><span class="status-badge ' + statusClass + '">' + esc(r.Status) + "</span></td>" +
+                '<td class="text-end">' + r.ItemCount + "</td>" +
+                '<td class="text-end">' + formatCurrency(r.Subtotal) + "</td>" +
+                '<td class="text-end">' + formatCurrency(r.Tax) + "</td>" +
+                '<td class="text-end fw-semibold">' + formatCurrency(r.Total) + "</td>" +
+                "</tr>";
+        });
+
+        tbody.innerHTML = html;
+        document.getElementById("tableFoot").innerHTML =
+            '<tr>' +
+            '<td colspan="5">Totals &mdash; ' + rows.length + ' order' + (rows.length !== 1 ? 's' : '') + '</td>' +
+            '<td class="text-end">' + totals.ItemCount + '</td>' +
+            '<td class="text-end">' + formatCurrency(totals.Subtotal) + '</td>' +
+            '<td class="text-end">' + formatCurrency(totals.Tax) + '</td>' +
+            '<td class="text-end">' + formatCurrency(totals.Total) + '</td>' +
+            '</tr>';
+    }
+
+    // ── KPI cards ──────────────────────────────────────────────────────
+    function updateKPIs(rows) {
+        if (rows.length === 0) {
+            setText("kpiRevenue",   "—");  setText("kpiRevenueSub",   "No orders in range");
+            setText("kpiOrders",    "—");  setText("kpiOrdersSub",    "");
+            setText("kpiAOV",       "—");  setText("kpiAOVSub",       "");
+            setText("kpiCustomers", "—");  setText("kpiCustomersSub", "");
+            return;
+        }
+
+        var totalRevenue = 0, customers = {}, fulfilled = 0;
+        rows.forEach(function (r) {
+            totalRevenue += r.Total;
+            customers[r.Customer] = true;
+            if (r.Status === "Fulfilled" || r.Status === "Shipped") fulfilled++;
+        });
+
+        var aov = totalRevenue / rows.length;
+        var custCount = Object.keys(customers).length;
+        var fulfillRate = Math.round(fulfilled / rows.length * 100);
+
+        setText("kpiRevenue",   formatCurrency(totalRevenue));
+        setText("kpiRevenueSub", rows.length + " orders");
+
+        setText("kpiOrders",    rows.length.toString());
+        setText("kpiOrdersSub", fulfillRate + "% fulfilled/shipped");
+
+        setText("kpiAOV",    formatCurrency(aov));
+        setText("kpiAOVSub", "per order average");
+
+        setText("kpiCustomers",    custCount.toString());
+        setText("kpiCustomersSub", custCount === 1 ? "unique customer" : "unique customers");
+    }
+
+    function updateHeader(rows) {
+        var from = document.getElementById("dateFrom").value;
+        var to   = document.getElementById("dateTo").value;
+        var sub  = rows.length + " orders";
+        if (from || to) sub += " &bull; " + (from || "start") + " – " + (to || "today");
+        document.getElementById("headerSub").innerHTML = sub;
+    }
+
+    // ── CSV Export ─────────────────────────────────────────────────────
+    function exportCSV() {
+        if (filteredRows.length === 0) return;
+        var cols = ["OrderNumber", "OrderDate", "Customer", "SalesRep", "Status", "ItemCount", "Subtotal", "Tax", "Total"];
+        var csv = cols.join(",") + "\n";
+        filteredRows.forEach(function (r) {
+            csv += cols.map(function (c) {
+                var v = String(r[c] !== undefined ? r[c] : "");
+                return /[,"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+            }).join(",") + "\n";
+        });
+        FB.setStatus("Exporting " + filteredRows.length + " rows...");
+        FB.saveFile("Sales Summary", "csv", "CSV Files", btoa(unescape(encodeURIComponent(csv))), "sales-summary.csv", false);
+        FB.setStatus("Exported " + filteredRows.length + " rows");
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────
+    function esc(v) {
+        return String(v == null ? "" : v)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function formatCurrency(n) {
+        return "$" + (n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function formatDate(s) {
+        if (!s) return "";
+        var p = s.split("-");
+        if (p.length !== 3) return s;
+        return p[1] + "/" + p[2] + "/" + p[0];
+    }
+    function setText(id, val) { document.getElementById(id).textContent = val; }
+
+    // ── Wire events ────────────────────────────────────────────────────
+    document.getElementById("btnFilter").addEventListener("click", applyFilters);
+    document.getElementById("btnRefresh").addEventListener("click", loadData);
+    document.getElementById("btnExport").addEventListener("click", exportCSV);
+
+    document.getElementById("btnClear").addEventListener("click", function () {
+        document.getElementById("filterCustomer").value = "";
+        document.getElementById("filterRep").value      = "";
+        document.getElementById("filterStatus").value   = "";
+        applyFilters();
+    });
+
+    document.querySelectorAll("#dataTable thead th[data-col]").forEach(function (th) {
+        th.addEventListener("click", function () { sortBy(th.getAttribute("data-col")); });
+    });
+
+    // ── Start ──────────────────────────────────────────────────────────
+    loadData();
+
+}());
+</script>
+</body>
+</html>
